@@ -42,6 +42,7 @@ RUN addgroup -g 1001 -S nodejs
 # 사용자 생성(ID:1001, 이름: nextjs)
 RUN adduser -S -u 1001 -G nodejs nextjs
 
+
 # 빌드 단계에서 생성된 next.config.ts 파일 복사
 COPY --from=builder /app/next.config.ts ./
 # 정적 파일 복사
@@ -52,6 +53,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 # package.json
 COPY --from=builder /app/package.json ./package.json
+# .env
+COPY --from=builder /app/.env.local ./
 
 # 실행 사용자 권한을 nextjs 사용자로 변경
 USER nextjs 
