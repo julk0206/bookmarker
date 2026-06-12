@@ -2,10 +2,12 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=maven,java,intellij,dbeaver,eclipse
 
 HELP.md
+CLAUDE.md
 
 ### DBeaver ###
 # ide config file
 .dbeaver-data-sources*.xml
+.dbeaver/
 
 ### Eclipse ###
 .metadata

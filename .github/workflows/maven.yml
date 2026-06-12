@@ -5,6 +5,7 @@ on:
     branches:
       - "**"
 
+# Jobs로 worflow 단계 생성
 jobs:
   build-bookmark-api:
     runs-on: ubuntu-latest
@@ -23,13 +24,16 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      # Maven Build 작업 시 권한 설정 - 접근 허용 +x 실행 권한
       - name: Build with Maven
         run: |
           chmod +x mvnw
           ./mvnw verify
 
+      # docker tty 명령어 사용 위한 환경설정
       - name: Build and Push Image
         if: github.ref == 'refs/heads/main'
+        # 현재 실행되고 있는 OS는 내 local PC X , github의 PC -> dockerBuild는 필요 X build만 O
         run: |
           ./mvnw clean package jib:dockerBuild -DskipTests
           docker login \
@@ -40,3 +44,48 @@ jobs:
           docker tag myimage:latest ${{ secrets.DOCKER_NAME }}/bookmarker-api:latest
           docker push \
             ${{ secrets.DOCKER_NAME }}/bookmarker-api:latest
+
+
+
+##################################
+# bookmark-ui-nextjs 빌드 및 docker 배포 #
+  build-bookmarker-ui:
+    name: Build bookmarker-ui
+    runs-on: ubuntu-latest
+    defaults:
+      # 배폳된 git repository 폴더명
+      run:
+        working-directory: ./bookmark-ui-nextjs
+    steps:
+      # 코드 체크아웃
+      - name: Checkout bookmarker
+        uses: actions/checkout@v4
+
+      # Node.js 설정
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+        
+      # 의존성 설치
+      - name: Install dependencies
+        run: npm ci
+
+      # .env.local 파일 설정
+      - name: Create .env 파일 생성
+        run: |
+          echo "SERVER_SIDE_API_BASE_URL=${{ secrets.SERVER_SIDE_API_BASE_URL }}" > .env.local
+          echo "NEXT_PUBLIC_CLIENT_SIDE_API_BASE_URL=${{ secrets.NEXT_PUBLIC_CLIENT_SIDE_API_BASE_URL }}" >> .env.local
+
+      # Next.js 빌드
+      - name: Next.js Build
+        run: npm run build
+      
+
+      # 메인 브랜치일 경우 Docker 이미지 빌드 및 배포
+      - if: ${{ github.ref == 'refs/heads/main' }}
+        name: Build and Push Docker image
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker build -f Dockerfile.ui -t ${{ secrets.DOCKER_USERNAME }}/bookomark-ui-nextjs .
+          docker push ${{ secrets.DOCKER_USERNAME }}/bookmark-ui-nextjs

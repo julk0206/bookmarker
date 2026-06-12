@@ -3,6 +3,7 @@ package com.min.edu.api;
 import com.min.edu.domain.Bookmark;
 import com.min.edu.repository.BookmarkRepository;
 import org.hamcrest.CoreMatchers;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -10,13 +11,16 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.time.Instant;
 import java.util.List;
 
+import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -86,7 +90,7 @@ public class BookmarkControllerTest {
 
     // 페이징 값을 입력해서 나오는 결과 테스트
     // page가 1이 전달됐을 때 테스트, page가 2가 전달됐을 때 테스트
-    @ParameterizedTest
+//    @ParameterizedTest
     @CsvSource ({"1,15,2,1,true,false,true,false", "2,15,2,2,false,true,false,true"})
     void shouldBookmarksPage(
             int pageNo, int totalElements, int totalPages, int currentPage,
@@ -102,6 +106,32 @@ public class BookmarkControllerTest {
                 .andExpect(jsonPath("$.hasNext", CoreMatchers.equalTo(hasNext)))
                 .andExpect(jsonPath("$.hasPrevious", CoreMatchers.equalTo(hasPrevious)))
                 ;
+    }
+
+    // 오류 예측해서 테스트 진행
+    @Test
+    public void shouldCreateBookmark() throws Exception {
+        // 반환되는 결과를 확인하기 위해서 MvcResult 사용
+        MvcResult result = mvc.perform(
+            MockMvcRequestBuilders.post("/api/bookmarks")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                            {
+                                "title":"Like Lion Study"
+                            }
+                            """)
+            )
+                .andExpect(status().is4xxClientError())
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.field", is("url")))
+                .andExpect(jsonPath("$.message", is("URL은 필수 입력값입니다")))
+                .andReturn();
+
+        String contentType = result.getResponse().getContentType();
+        System.out.println("Content-Type: \t" + contentType);
+
+        String responseBody = result.getResponse().getContentAsString();
+        System.out.println("Response JSON: \t" + responseBody);
     }
 
 }

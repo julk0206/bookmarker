@@ -1,0 +1,61 @@
+# 빌드하기 위한 내부 폴더 선택 필요 -> node_module 복사 -> 빌드
+
+# Node js 24, Alpine Linux 기반 의존성 설치용 이미지 스테이지 시작
+FROM node:24-alpine AS deps
+# Alpine에 glibc 호환 라이브러리 설치 (일부 npm 패키지가 필요로 하는 리눅스 라이브러리)
+RUN apk add --no-cache libc6-compat
+# 작업 디렉터리 /app
+WORKDIR /app
+
+# 의존성 설치에 필욯나 파일만 복사
+COPY package*.json ./
+
+# 프로덕션 환경용 의존성 설치
+RUN npm ci --omit=dev
+
+
+# 빌드용 이미지 스테이지 시작
+FROM node:24-alpine AS builder
+# 작업 디렉터리 /app으로 설정
+WORKDIR /app
+
+# 전체 소스 복사
+COPY . .
+# 앞 단계(deps)에서 설치한 의존성 복사
+COPY --from=deps /app/node_modules ./node_modules
+# 환경변수 파일 복사
+COPY .env.local .env.local
+
+# Nextjs 빌드 실행 (.next 폴더에 생성)
+RUN npm run build
+
+
+# 실행용 이미지 스테이지
+FROM node:24-alpine AS runner
+WORKDIR /app
+
+# 프로덕션 모드 환경 설정
+ENV NODE_ENV=production
+
+# 그룹 생성 (ID:1001, 이름:nodejs)
+RUN addgroup -g 1001 -S nodejs
+# 사용자 생성(ID:1001, 이름: nextjs)
+RUN adduser -S -u 1001 -G nodejs nextjs
+
+# 빌드 단계에서 생성된 next.config.ts 파일 복사
+COPY --from=builder /app/next.config.ts ./
+# 정적 파일 복사
+COPY --from=builder /app/public ./public
+# 빌드 결과물 복사 및 권한 설정
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+# 의존 모듈 복사
+COPY --from=builder /app/node_modules ./node_modules
+# package.json
+COPY --from=builder /app/package.json ./package.json
+
+# 실행 사용자 권한을 nextjs 사용자로 변경
+USER nextjs 
+# 컨테이너 내부 3000 포트 오픈
+EXPOSE 3000
+# 컨테이너 시작 시 npm start 명령어 실행
+CMD ["npm", "start"]

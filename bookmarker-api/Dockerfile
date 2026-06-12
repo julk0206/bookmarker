@@ -12,4 +12,4 @@ RUN sh -c 'touch /app.jar'
 EXPOSE 8080
 
 # 애플리케이션이 실행할 명령어
-ENTRYPOINT ["sh","-c","java -jar /app.k"]
+ENTRYPOINT ["sh","-c","java -jar /app.jar"]
