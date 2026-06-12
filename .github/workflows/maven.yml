@@ -41,9 +41,9 @@ jobs:
             -p ${{ secrets.DOCKER_PASSWORD }}
           docker build \
             -t myimage:latest .
-          docker tag myimage:latest ${{ secrets.DOCKER_NAME }}/bookmarker-api:latest
+          docker tag myimage:latest ${{ secrets.DOCKER_USERNAME }}/bookmarker-api:latest
           docker push \
-            ${{ secrets.DOCKER_NAME }}/bookmarker-api:latest
+            ${{ secrets.DOCKER_USERNAME }}/bookmarker-api:latest
 
 
 
